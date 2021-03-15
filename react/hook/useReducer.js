@@ -39,3 +39,30 @@ function useReducer(reducer, initialState) {
 // useReducer 是适合用于管理包含多个子值的 state 对象。
 
 const [state, dispatch] = useReducer(todosReducer, []);
+
+/**
+ * redux createStore
+ * @param {*} reducer
+ */
+const createStore = (reducer) => {
+  let state;
+  let listeners = [];
+
+  const getState = () => state;
+
+  const dispatch = (action) => {
+    state = reducer(state, action);
+    listeners.forEach((listener) => listener());
+  };
+
+  const subscribe = (listener) => {
+    listeners.push(listener);
+    return () => {
+      listeners = listeners.filter((l) => l !== listener);
+    };
+  };
+
+  dispatch({});
+
+  return { getState, dispatch, subscribe };
+};
