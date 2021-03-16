@@ -32,17 +32,12 @@ function Promise(fn) {
 Promise.prototype.then = function (onResolved, onRejected) {
   // 根据标准，如果then的参数不是function，则我们需要忽略它，此处以如下方式处理
   //! 注意默认函数需要处理值的穿透
-  onResolved =
-    typeof onResolved === "function"
-      ? onResolved
-      : function (value) {
-          return value;
-        };
+  onResolved = typeof onResolved === "function" ? onResolved : (v) => v;
   onRejected =
     typeof onRejected === "function"
       ? onRejected
-      : function (error) {
-          throw error;
+      : (e) => {
+          throw e;
         };
 
   if (this.status === "resolved") {
@@ -110,7 +105,47 @@ Promise.prototype.then = function (onResolved, onRejected) {
 };
 
 Promise.prototype.catch = function (onRejected) {
-  this.then(null, onRejected);
+  return this.then(null, onRejected);
+};
+
+Promise.all = function (promises) {
+  return new Promise(function (resolve, reject) {
+    let cnt = 0;
+    let result = [];
+    for (let i = 0; i < promises.length; i++) {
+      promises[i].then(
+        (res) => {
+          result[i] = res;
+          if (++cnt === promises.length) resolve(result);
+        },
+        (err) => {
+          //? 这里可以把 Promise 修改成不会中断的
+          reject(err);
+        }
+      );
+    }
+  });
+};
+
+Promise.race = function (promises) {
+  return new Promise(function (resolve, reject) {
+    for (let i = 0; i < promises.length; i++) {
+      // 哪个 promise 先 resolve，返回的 Promise 实例的状态就确定了，后面也更改不了
+      promises[i].then(resolve, reject);
+    }
+  });
+};
+
+Promise.resolve = function (val) {
+  return new Promise(function (resolve, reject) {
+    resolve(val);
+  });
+};
+
+Promise.reject = function (err) {
+  return new Promise(function (resolve, reject) {
+    reject(err);
+  });
 };
 
 /* test
@@ -121,7 +156,7 @@ const p = new Promise((resolve) => {
     console.log(1);
     resolve("end");
     console.log(2);
-  }, 1000);
+  });
 });
 
 setTimeout(() => {

@@ -7,6 +7,9 @@ function compose(...fns) {
     fns.reduce((promise, fn) => promise.then(fn), Promise.resolve(x));
 }
 
+// 上面的即适合异步也适合同步，如果只考虑同步可以简化
+const pipe = (...fns) => (val) => fns.reduce((acc, fn) => fn(acc), val);
+
 /* test
 ---------------------------------------------------------------- */
 

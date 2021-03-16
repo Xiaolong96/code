@@ -28,7 +28,8 @@ function Derived() {
 
 inheritPrototype(Derived, Base);
 
-/** --------test-------- */
+/* test
+---------------------------------------------------------------- */
 
 Base.prototype.sayName = function () {
   console.log(this.name);
