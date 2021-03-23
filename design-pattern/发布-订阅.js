@@ -43,28 +43,43 @@ subject.notify();
 /** 发布订阅模式：房地产商和购房者通过售楼中心交易 */
 
 // broker or message broker or event bus 消息代理或事件总线
-class Events {
+class EventEmitter {
   constructor() {
-    this.events = new Map();
+    this.events = {};
   }
-  on(event, fn) {
-    let listeners = this.events.get(event) || [];
-    listeners.push({
-      fn,
-    });
-    this.events.set(event, listeners);
+  on(event, callback) {
+    const callbacks = this.events[event] || [];
+    if (Array.isArray(callbacks)) {
+      callbacks.push(callback);
+      this.events[event] = callbacks;
+    }
+    return this;
   }
-
+  off(event, callback) {
+    const callbacks = (this.events[event] || []).filter(
+      (cb) => cb !== callback
+    );
+    this.events[event] = callbacks;
+    return this;
+  }
+  once(event, callback) {
+    const wrap = (...args) => {
+      typeof callback === "function" && callback.apply(this, args);
+      this.off(event, wrap);
+    };
+    this.on(event, wrap);
+    return this;
+  }
   emit(event) {
-    if (!this.events.has(event)) return;
-    const listeners = this.events.get(event);
-    listeners.forEach((listener) => {
-      listener.fn();
-    });
+    const callbacks = this.events[event] || [];
+    if (Array.isArray(callbacks)) {
+      callbacks.forEach((cb) => typeof cb === "function" && cb());
+    }
+    return this;
   }
 }
 
-const e = new Events(); // 售楼中心
+const e = new EventEmitter(); // 售楼中心
 
 e.on("A", () => {
   // 购房者在售楼中心注册（订阅）
@@ -82,7 +97,7 @@ e.emit("A"); // 房地产商有房时通知售楼中心（发布）
  * 什么是发布订阅，具体场景：
  * 1、登陆（或者请求）完成设置header 头部、nav 导航、消息列表、购物车等，一般是使用异步回调，
  * 但如果新加功能会导致修改原回调代码，可以在登陆完成 emit，然后功能动作自行订阅，将功能解耦出来；
- * 2、dom adEventListener
+ * 2、dom addEventListener
  *
  * 优点：
  * 发布订阅代替异步回调，耦合低

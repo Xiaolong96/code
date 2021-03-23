@@ -96,4 +96,100 @@ SSO 的实现有很多框架，比如 CAS 框架，以下是 CAS 框架的官方
 
 #### 2、性能优化
 
-preload、prefetch
+<details>
+<summary>
+使用 Gzip 压缩；
+利用缓存 Cache-Control 响应头；
+懒加载；
+预加载和预获取；
+其它：IconFont、减少 Cookie 大小、第三方服务器跨域请求资源 dns-prefetch；
+
+</summary>
+
+##### 使用 Gzip 压缩
+
+请求头 accept-encoding: gzip, deflate, br
+响应头 Content-Encoding: gzip
+方式 CompressionWebpackPlugin + Nginx gzip on
+
+##### 利用缓存 Cache-Control 响应头
+
+图片 Cache-Control: max-age=2592000 （一个月）
+css Cache-Control: max-age=3600（一小时）
+js Cache-Control: max-age=3600（一小时）
+cdn js Cache-Control: public, max-age=31536000（一年）
+一般是在 Nginx 正则匹配资源添加不同的响应头部和缓存策略
+
+##### 懒加载
+
+- 资源文件拆分，按需加载
+- 图片按需加载
+
+##### Preload key requests
+
+> Consider using `<link rel=preload>` to prioritize fetching resources that are currently requested later in page load
+
+`preload` 的设计初衷是为了尽早加载首屏需要的关键资源，从而提升页面渲染性能.
+
+- prefetch(预获取)：将来某些导航下可能需要的资源
+- preload(预加载)：当前导航下可能需要资源
+
+最佳实践：
+
+- **大部分场景下无需特意使用 preload**，目前浏览器基本上都具备预测解析能力，可以提前解析入口 html 中外链的资源，因此入口脚本文件、样式文件等不需要特意进行 preload。
+- 类似**字体文件**这种隐藏在脚本、样式中的首屏关键资源，建议使用 `preload`
+- **异步加载的模块**（典型的如单页系统中的非首页）建议使用 `prefetch`
+- **大概率即将被访问到的资源**可以使用 `prefetch` 提升性能和体验
+
+具体实践：
+
+- preload-webpack-plugin
+- webpack 预获取/预加载模块
+  下面这个 prefetch 的简单示例中，有一个 HomePage 组件，其内部渲染一个 LoginButton 组件，然后在点击后按需加载 LoginModal 组件
+
+  ```js
+  import(/* webpackPrefetch: true */ "./path/to/LoginModal.js");
+  ```
+
+  > LoginModal 是一个大概率被访问到的资源，可以预先获取
+
+  我们假想这里的图表组件 ChartComponent 组件需要依赖体积巨大的 ChartingLibrary 库。它会在渲染时显示一个 LoadingIndicator(加载进度条) 组件，然后立即按需导入 ChartingLibrary：
+
+  ```js
+  // ChartComponent.js
+  import(/* webpackPreload: true */ "ChartingLibrary");
+  ```
+
+**注意：**
+
+- 当无法缓存的时候，prefetch 预提取的资源不会被缓存，第二次加载仍然是从服务器加载，因此，如果要使用 prefetch，相应的资源必须做好合理的缓存控制。
+- preload 的字体资源必须设置 `crossorigin` 属性，否则会导致重复加载。
+- 两者的兼容性目前都还不是太好。好在不支持 preload 和 prefetch 的浏览器会自动忽略它，因此可以将它们作为一种渐进增强功能
+
+**与 async/defer 的对比：**
+
+使用 async/defer 属性在加载脚本的时候不阻塞 HTML 的解析，defer 加载脚本执行会在所有元素解析完成，DOMContentLoaded 事件触发之前完成执行。它的用途其实跟 preload 十分相似。你可以使用 defer 加载脚本在 head 末尾，这比将脚本放在 body 底部效果来的更好。
+
+1、它相比于 preload 加载的优势在于浏览器**兼容性**好，从 caniuse 上看基本上所有浏览器都支持，覆盖率达到 93%，
+2、不足之处在于：**defer 只作用于脚本文件，对于样式、图片等资源就无能为力了，并且 defer 加载的资源是要执行的，而 preload 只下载资源并不执行，待真正使用到才会执行文件**。
+3、对于页面上主/首屏脚本，可以直接使用 defer 加载，而对于非首屏脚本/其它资源，可以采用 preload/prefeth 来进行加载。
+
+##### IconFont
+
+##### 减少 Cookie 大小
+
+- 减少无用 cookie
+- 控制好 domain, 不要污染子域
+
+##### 第三方服务器跨域请求资源
+
+尽管 `dns-prefetch` 仅执行 DNS 查找，但 `preconnect` 会建立与服务器的连接。如果站点是通过 HTTPS 服务的，则此过程包括 DNS 解析，建立 TCP 连接以及执行 TLS 握手。将两者结合起来可提供进一步减少跨域请求的感知延迟的机会
+
+```
+<link rel="preconnect" href="https://fonts.gstatic.com/" crossorigin>
+<link rel="dns-prefetch" href="https://fonts.gstatic.com/">
+```
+
+> Note: 如果页面需要建立与许多第三方域的连接，则将它们预先连接会适得其反。 preconnect 提示最好仅用于最关键的连接。对于其他的，只需使用 <link rel="dns-prefetch"> 即可节省第一步的时间-DNS 查找。
+
+</details>
