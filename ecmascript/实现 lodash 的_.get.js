@@ -23,4 +23,4 @@ let obj = {
   ],
 };
 
-console.log(get(obj, "a[0].b.c.d[0]", 1)); // output: 3
+console.log(get(obj, "a[0].b.c.d[0]", 1)); // output: 2

@@ -10,7 +10,7 @@ var pipe = function (value) {
           }, value);
         }
         stack.push(window[prop]);
-        // !关键
+        // !链式调用的关键是返回本身
         return proxy;
       },
     }

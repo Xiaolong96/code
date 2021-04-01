@@ -193,3 +193,10 @@ cdn js Cache-Control: public, max-age=31536000（一年）
 > Note: 如果页面需要建立与许多第三方域的连接，则将它们预先连接会适得其反。 preconnect 提示最好仅用于最关键的连接。对于其他的，只需使用 <link rel="dns-prefetch"> 即可节省第一步的时间-DNS 查找。
 
 </details>
+
+#### cdn 如何工作
+
+<details>
+<summary>网络之上的内容分发网络；就近获取所需内容，降低网络拥塞，关键技术：内容存储和分发技术</summary>
+CDN的全称是Content Delivery Network，即内容分发网络。CDN是构建在网络之上的内容分发网络，依靠部署在各地的边缘服务器，通过中心平台的负载均衡、内容分发、调度等功能模块，使用户就近获取所需内容，降低网络拥塞，提高用户访问响应速度和命中率。CDN的关键技术主要有内容存储和分发技术。
+</details>

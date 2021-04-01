@@ -266,3 +266,118 @@ console.log(say); //输出'2'
 **同名情况下，函数声明提升优先级要高于变量声明提升，且提升后该函数声明定义不会被提升后的同名变量声明所覆盖，但是会被后续顺序执行的同名变量赋值所覆盖。**
 
 </details>
+
+#### 模块循环依赖
+
+<details>
+<summary>深度优先，模块只会执行一遍，循环依赖取中间缓存，动态引用</summary>
+
+```js
+// a.mjs
+import { bar } from "./b.mjs";
+console.log("bar in A:", bar);
+export var foo = "foo";
+
+// b.mjs
+import { foo } from "./a.mjs"; // 循环加载 a，a 不会再次被执行，能获取已经导出的部分
+console.log("foo in B:", foo);
+export var bar = "bar";
+
+setTimeout(() => {
+  console.log("异步输出foo in B:", foo); // foo 是动态引用，此时已经可以访问 foo 了
+});
+
+/**
+ * foo in B: undefined
+ * bar in A: bar
+ * 异步输出foo in B: foo
+ * /
+```
+
+CommonJS 的输出结果，异步也访问不到 foo，因为 A 模块只执行一遍，然后将结果缓存。
+在 B 执行的时候， A 的 foo 还没有输出，缓存只是一个中间缓存，`const { foo } = require("./a.js");`
+foo 被赋值为 undefined，且 foo 并不是引用，后续只要不再次被赋值，就一直是 undefined
+
+```
+foo in B: undefined
+bar in A: bar
+(node:20900) Warning: Accessing non-existent property 'foo' of module exports inside circular dependency
+异步输出foo in B: undefined
+```
+
+总结:
+
+- 加载器会执行深度优先的依赖加载
+- ES6 模块与 CommonJS 模块都不会再去执行重复加载的模块
+- 一旦某个模块被循环加载，就只输出已经执行（缓存）的部分，没有执行的部分不输出
+- 但由于 ES6 模块是编译时加载，动态引用，所以只需要保证真正取值时能够取到值，即已经声明初始化，代码就能正常执行
+
+</details>
+
+#### var、let、const
+
+<details>
+<summary>暂存死区、块级作用域、全局挂载、同名变量</summary>
+
+- var 声明的变量存在变量提升，let 和 const 不会，所以会导致暂存死区（即使上级作用域有同名变量也不会去寻找）
+- let 和 const 声明会形成块级作用域
+- var 声明的变量会挂载到 window 上，而 let 和 const 不会
+- 同一作用域下，let 和 const 不能声明同名变量
+
+</details>
+
+#### 事件循环 macrotask 与 microtask
+
+<details>
+<summary>执行栈 -> process.nextTick -> Promise -> setImmediate -> setTimeout</summary>
+
+JS 中分为两种任务类型：`macrotask` 和 `microtask`，在 ECMAScript 中，microtask 称为 `jobs`，macrotask 可称为 `task`
+
+- macrotask（又称之为宏任务），可以理解是**每次执行栈执行的代码就是一个宏任务**（包括每次从事件队列中获取一个事件回调并放到执行栈中执行）
+
+  - 每一个 task 会从头到尾将这个任务执行完毕，不会执行其它
+  - 浏览器为了能够使得 JS 内部 task 与 DOM 任务能够有序的执行，会在一个 task 执行结束后，在下一个 task 执行开始前，对页面进行重新渲染 （task->渲染->task->...）
+
+- microtask（又称为微任务），可以理解是在**当前 task 执行结束后立即执行的任务**，也就是说，在当前 task 任务后，下一个 task 之前，在渲染之前，所以它的响应速度相比 setTimeout（setTimeout 是 task）会更快，因为无需等渲染，也就是说，在某一个 macrotask 执行完后，就会将在它执行期间产生的所有 microtask 都执行完毕（在渲染前）
+
+macrotask：主代码块、setImmediate、MessageChannel、setTimeout、setInterval 等（可以看到，事件队列中的每一个事件都是一个 macrotask）
+microtask：process.nextTick、Promise、MutationObserver 等
+
+> 在 node 环境下，process.nextTick 的优先级高于 Promise
+> setImmediate 优先级高于 setTimeout，延迟 0 毫秒的 setTimeout() 回调与 setImmediate() 非常相似。 执行顺序取决于各种因素，但是它们都会在事件循环的下一个迭代中运行。（node 实测 0 毫秒的 setTimeout 先于 setImmediate 执行）
+
+所以，总结下运行机制：
+
+- 执行一个宏任务（栈中没有就从事件队列中获取）
+- 执行过程中如果遇到微任务，就将它添加到微任务的任务队列中
+- 宏任务执行完毕后，立即执行当前微任务队列中的所有微任务（依次执行）
+- 当前宏任务执行完毕，开始检查渲染，然后 GUI 线程接管渲染
+- 渲染完毕后，JS 线程继续接管，开始下一个宏任务（从事件队列中获取）
+
+</details>
+
+#### JSBridge 的双向通信原理
+
+<details>
+<summary>JS 调用 Native 的实现方式较多，主要有拦截 URL Scheme 、重写 prompt 、注入 API 等方法</summary>
+
+##### JS 调用 Native
+
+JS 调用 Native 的实现方式较多，主要有拦截 URL Scheme 、重写 prompt 、注入 API 等方法
+
+- 拦截 `URL Scheme`: 这种方法的优点是不存在漏洞问题、使用灵活，可以实现 H5 和 Native 页面的无缝切换。例如在某一页面需要快速上线的情况下，先开发出 H5 页面。某一链接填写的是 H5 链接，在对应的 Native 页面开发完成前先跳转至 H5 页面，待 Native 页面开发完后再进行拦截，跳转至 Native 页面，此时 H5 的链接无需进行修改。但是使用 iframe.src 来发送 URL Scheme 需要对 URL 的长度作控制，使用复杂，速度较慢。
+- 重写 prompt 等原生 JS 方法: 主要是拦截 alert、confirm、prompt、console.log 四个方法，分别被 Webview 的 onJsAlert、onJsConfirm、onConsoleMessage、onJsPrompt 监听。另外，如果能与 Native 确定好方法名、传参等调用的协议规范，这样其它格式的 prompt 等方法是不会被识别的，能起到隔离的作用
+- 注入 API: 基于 Webview 提供的能力，我们可以向 Window 上注入对象或方法。JS 通过这个对象或方法进行调用时，执行对应的逻辑操作，可以直接调用 Native 的方法
+
+##### Native 调用 JS
+
+Native 调用 JS 比较简单，只要 H5 将 JS 方法暴露在 Window 上给 Native 调用即可。
+
+##### JSBridge 的使用
+
+如何引用
+
+- 由 H5 引用: 在我司移动端初期版本时采用的是该方式，采用本地引入 npm 包的方式进行调用。这种方式可以确定 JSBridge 是存在的，可直接调用 Native 方法。但是如果后期 Bridge 的实现方式改变，双方需要做更多的兼容，维护成本高
+- 由 Native 注入: 这是当前我司移动端选用的方式。在考虑到后期业务需要的情况下，进行了重新设计，选用 Native 注入的方式来引用 JSBridge。这样有利于保持 API 与 Native 的一致性，但是缺点是在 Native 注入的方法和时机都受限，JS 调用 Native 之前需要先判断 JSBridge 是否注入成功
+
+</details>
