@@ -13,6 +13,8 @@
 
 [Mixins Considered Harmful](https://reactjs.org/blog/2016/07/13/mixins-considered-harmful.html)
 
+> React 是学院派前端库，怎么会喜欢 mixin 这种引入大量不可控因素的方式，导致新人上手代码时对其如何工作越发不理解(incomprehensible)。跟 PHP 里面的 traits 一样，mixin 一开始为了减少重复代码，隐藏累赘或复杂逻辑，特别受老人新人欢迎。可是他们跟 oop 设计模式几乎相反，对于大工程协作来说是有一点风险的。举个例子，烦人的 OOP 如果给你一个对象 Cat，工程师 A 想要写波斯猫，可以写个 PersianCat；工程师 B 写出了个 WildCat，只要约定不直接改 Cat，那么他们的修改基本互不影响。但是 mixin(PHP 里面的 trait)，写一个 PersianCat[mixin Cat + Persian]，或写一个 WildCat[mixin Cat + Wild]，是没有问题的。当写一个 野生波斯猫，可以非常方便写出 PersianWildCat[mixin Cat + Persian + Wild]。可是谁知道这只野生波斯猫的某个行为来自哪个 mixin，修着修着 bug 就不小心 override 了另一个不想改的行为了。（如果是上面的 OOP，那么野生波斯猫就必须在波斯猫和野生猫选一个继承啦，麻烦但是比较安全)HOC 也只是另一种隐藏累赘或复杂逻辑、减少重复代码的方式，但如此显性的行为当然是比较学院派的特性啦。 —— [知乎](zhihu.com/question/67588479)
+
 ##### HOC
 
 高阶组件的实现方式：

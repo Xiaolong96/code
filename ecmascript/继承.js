@@ -11,7 +11,7 @@
  */
 function inheritPrototype(derivedType, baseType) {
   let prototype = Object.create(baseType.prototype); // 创建原型对象（原型式继承）
-  prototype.constructor = baseType; // 增强原型对象
+  prototype.constructor = derivedType; // 增强原型对象
   derivedType.prototype = prototype; // 赋值原型对象
 }
 
